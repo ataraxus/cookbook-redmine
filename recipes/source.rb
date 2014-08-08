@@ -238,4 +238,4 @@ deploy_revision node['redmine']['deploy_to'] do
   notifies :restart, "service[apache2]"  
 end
 
-
+bash "service apache2 restart"
