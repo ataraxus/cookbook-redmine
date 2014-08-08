@@ -28,7 +28,7 @@ when "mysql"
 when "postgresql"
   include_recipe "postgresql::server"
 end
-
+default["apache"]["version"] = "2.4" # for ubuntu 14.04
 include_recipe "apache2"
 
 case node['platform']

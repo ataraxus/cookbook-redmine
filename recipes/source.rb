@@ -36,6 +36,12 @@ end
 node['redmine']['packages']['apache'].each do |pkg|
   package pkg
 end
+
+apache_module "passenger" do 
+   enable true
+   notifies :reload, "service[apache]", :immediately 
+end
+ 
 node['redmine']['packages']['scm'].each do |pkg|
   package pkg
 end
@@ -112,10 +118,11 @@ database_user node["redmine"]["databases"][environment]["username"] do
 end
 
 #Setup Apache
+node.default["apache"]["version"] = "2.4" # for ubuntu 14.04
 include_recipe "apache2"
-apache_site "000-default" do
+apache_site "000-default.conf" do
   enable false
-  notifies :restart, "service[apache2]"
+  notifies :reload, "service[apache2]", :immediate 
 end
 
 web_app "redmine" do
@@ -154,6 +161,10 @@ else
   end
 end
 
+gem_package "mysql2" do
+  action :install
+end
+
 # deploy the Redmine app
 include_recipe "git"
 deploy_revision node['redmine']['deploy_to'] do
@@ -165,6 +176,7 @@ deploy_revision node['redmine']['deploy_to'] do
   #shallow_clone true
 
   before_migrate do
+   
     %w{config log system pids}.each do |dir|
       directory "#{node['redmine']['deploy_to']}/shared/#{dir}" do
         owner node['apache']['user']
@@ -198,12 +210,12 @@ deploy_revision node['redmine']['deploy_to'] do
     end
 
     if Gem::Version.new(node['redmine']['revision']) < Gem::Version.new('2.0.0')
-      execute 'rake generate_session_store' do
+      execute 'bundle exec rake generate_session_store' do
         cwd release_path
         not_if { ::File.exists?("#{release_path}/db/schema.rb") }
       end
     else
-      execute 'rake generate_secret_token' do
+      execute 'bundle exec rake generate_secret_token' do
         cwd release_path
         not_if { ::File.exists?("#{release_path}/config/initializers/secret_token.rb") }
       end
@@ -212,16 +224,18 @@ deploy_revision node['redmine']['deploy_to'] do
   end
 
   migrate true
-  migration_command 'rake db:migrate'
+  migration_command 'bundle exec rake db:migrate'
 
   create_dirs_before_symlink %w{tmp public config tmp/pdf public/plugin_assets}
 
   before_restart do
     link node['redmine']['path'] do
-      to release_path
+      to release_path + "/public"
     end
   end
 
   action :deploy
-  notifies :restart, "service[apache2]"
+  notifies :restart, "service[apache2]"  
 end
+
+

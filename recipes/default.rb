@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+node.default["apache"]["version"] = "2.4" # for ubuntu 14.04
 # set through recipes the base system
 case node['platform']
 when "redhat","centos","amazon","scientific","fedora","suse"
